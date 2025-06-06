@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Drawing Tool</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .color-palette {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .color-btn {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .color-btn.active {
+            border-color: #333;
+            transform: scale(1.15);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .brush-size {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .size-slider {
+            width: 100px;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            outline: none;
+            cursor: pointer;
+        }
+
+        .control-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .eraser-btn {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+        }
+
+        .eraser-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255,107,107,0.3);
+        }
+
+        .eraser-btn.active {
+            background: linear-gradient(135deg, #ee5a52, #c92a2a);
+            transform: scale(1.05);
+        }
+
+        .clear-btn {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            color: white;
+        }
+
+        .clear-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(78,205,196,0.3);
+        }
+
+        #canvas {
+            border: 3px solid #ddd;
+            border-radius: 10px;
+            cursor: crosshair;
+            background: white;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: box-shadow 0.3s;
+        }
+
+        #canvas:hover {
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .size-display {
+            font-weight: bold;
+            color: #666;
+            min-width: 30px;
+        }
+
+        .title {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        @media (max-width: 768px) {
+            .toolbar {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            #canvas {
+                width: 90vw;
+                height: 50vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1 class="title">🎨 Drawing Tool</h1>
+    
+    <div class="container">
+        <div class="toolbar">
+            <div class="color-palette">
+                <div class="color-btn active" style="background-color: #000000" data-color="#000000"></div>
+                <div class="color-btn" style="background-color: #ff0000" data-color="#ff0000"></div>
+                <div class="color-btn" style="background-color: #00ff00" data-color="#00ff00"></div>
+                <div class="color-btn" style="background-color: #0000ff" data-color="#0000ff"></div>
+                <div class="color-btn" style="background-color: #ffff00" data-color="#ffff00"></div>
+                <div class="color-btn" style="background-color: #ff00ff" data-color="#ff00ff"></div>
+                <div class="color-btn" style="background-color: #00ffff" data-color="#00ffff"></div>
+                <div class="color-btn" style="background-color: #ffa500" data-color="#ffa500"></div>
+                <div class="color-btn" style="background-color: #800080" data-color="#800080"></div>
+                <div class="color-btn" style="background-color: #ffc0cb" data-color="#ffc0cb"></div>
+            </div>
+            
+            <div class="brush-size">
+                <span>Size:</span>
+                <input type="range" id="brushSize" class="size-slider" min="1" max="50" value="5">
+                <span class="size-display" id="sizeDisplay">5</span>
+            </div>
+            
+            <button class="control-btn eraser-btn" id="eraserBtn">🧹 Eraser</button>
+            <button class="control-btn clear-btn" id="clearBtn">🗑️ Clear All</button>
+        </div>
+        
+        <canvas id="canvas" width="800" height="500"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const colorBtns = document.querySelectorAll('.color-btn');
+        const brushSizeSlider = document.getElementById('brushSize');
+        const sizeDisplay = document.getElementById('sizeDisplay');
+        const eraserBtn = document.getElementById('eraserBtn');
+        const clearBtn = document.getElementById('clearBtn');
+
+        let isDrawing = false;
+        let currentColor = '#000000';
+        let currentSize = 5;
+        let isErasing = false;
+
+        // Set up canvas
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // Color selection
+        colorBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                colorBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentColor = btn.dataset.color;
+                isErasing = false;
+                eraserBtn.classList.remove('active');
+                canvas.style.cursor = 'crosshair';
+            });
+        });
+
+        // Brush size
+        brushSizeSlider.addEventListener('input', (e) => {
+            currentSize = e.target.value;
+            sizeDisplay.textContent = currentSize;
+        });
+
+        // Eraser toggle
+        eraserBtn.addEventListener('click', () => {
+            isErasing = !isErasing;
+            eraserBtn.classList.toggle('active');
+            colorBtns.forEach(b => b.classList.remove('active'));
+            canvas.style.cursor = isErasing ? 'grab' : 'crosshair';
+        });
+
+        // Clear canvas
+        clearBtn.addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        // Drawing functions
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            ctx.lineWidth = currentSize;
+            
+            if (isErasing) {
+                ctx.globalCompositeOperation = 'destination-out';
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = currentColor;
+            }
+
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        function stopDrawing() {
+            if (isDrawing) {
+                isDrawing = false;
+                ctx.beginPath();
+            }
+        }
+
+        // Mouse events
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousedown', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const mouseEvent = new MouseEvent('mouseup', {});
+            canvas.dispatchEvent(mouseEvent);
+        });
+
+        // Prevent scrolling when touching the canvas
+        document.body.addEventListener('touchstart', (e) => {
+            if (e.target === canvas) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.body.addEventListener('touchend', (e) => {
+            if (e.target === canvas) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.body.addEventListener('touchmove', (e) => {
+            if (e.target === canvas) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    </script>
+</body>
+</html>
